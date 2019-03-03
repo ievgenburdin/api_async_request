@@ -1,0 +1,18 @@
+version: '3.5'
+
+x-async-request-api-client-volumes:
+  &async-request-api-client-volumes
+  - ./project:/app
+
+services:
+  async-request-api-client:
+    build:
+      context: .
+      dockerfile: ./docker/python/Dockerfile
+    env_file: .env
+    environment:
+      - KEEP_ALIVE=1
+#      - RUN_PARSER=0
+#      - $IDLE = 1
+    volumes:
+      *async-request-api-client-volumes
