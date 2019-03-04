@@ -20,9 +20,8 @@ from tips.helpers import QueryBuilder
 
 def test_tips_client():
     loop = asyncio.get_event_loop()
-    executor = ThreadPoolExecutor(max_workers=4)
     qb = QueryBuilder(config.ALPHABET_LIST, config.MAX_QUERY_LENGTH)
-    client = TipsClient(config.API_HOST, config.API_URL, qb)
+    client = TipsClient(config.API_HOST, config.API_URL, qb.get_words_gen())
     loop.run_until_complete(client.main())
 
 

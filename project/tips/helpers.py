@@ -43,6 +43,26 @@ class QueryBuilder(object):
         self.symbols_list = symbols_list
         self.max_length = max_length
 
-    def get_words(self):
+    def get_all_words_gen(self):
         for unique_combination in combinations_with_replacement(self.symbols_list, self.max_length):
             yield "".join(unique_combination)
+
+    def get_words_gen(self, latest=None):
+        latest = tuple(''.split(latest))
+        if latest:
+            try:
+                combinations_list = list(combinations_with_replacement(self.symbols_list, self.max_length))
+                index = combinations_list.index(latest)
+                for unique_combination in combinations_list[index:]:
+                    yield "".join(unique_combination)
+
+            except ValueError:
+                pass
+            except IndexError:
+                pass
+        else:
+            self.get_all_words_gen()
+
+
+
+

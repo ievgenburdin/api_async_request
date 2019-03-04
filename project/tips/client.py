@@ -1,19 +1,19 @@
 import aiohttp
 import json
-from database import DatabaseManager
+from database import AsyncDatabaseManager
 from tips.db_schema import Category, Product, Tip, Query
 from tips.helpers import price_parser
 
 
-db_manager = DatabaseManager()
+db_manager = AsyncDatabaseManager()
 
 
 class TipsClient(object):
 
-    def __init__(self, api_host, api_url, query_builder):
+    def __init__(self, api_host, api_url, query_words):
         self.api_host = api_host
         self.api_url = api_url
-        self.query_builder = query_builder
+        self.query_words = query_words
 
     async def get_url(self):
         return self.api_host + self.api_url
@@ -25,7 +25,7 @@ class TipsClient(object):
     async def main(self):
         url = await self.get_url()
 
-        for query_word in self.query_builder.get_words():
+        for query_word in self.query_words:
             query_param = {'q': query_word}
 
             async with aiohttp.ClientSession() as session:
@@ -86,5 +86,6 @@ class TipsClient(object):
             'text_query': query_word
         }
 
-        tip = Tip(**tip_kwargs)
+        tip = await db_manager.create(Tip, **tip_kwargs)
+
         return tip
