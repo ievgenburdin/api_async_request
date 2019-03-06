@@ -4,7 +4,7 @@ cmd="$@"
 
 if [ "$RUN_PARSER" != "" ];
 then
-    python parser.py
+    python app.py
 fi
 
 if [ "$KEEP_ALIVE" != "" ];

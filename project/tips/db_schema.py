@@ -4,7 +4,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 import database as db
 
+
 Base = declarative_base()
+
 
 category_association_table = Table('category_association', Base.metadata,
     Column('tips_id', Integer, ForeignKey('tips.id')),
@@ -22,7 +24,25 @@ query_association_table = Table('query_association', Base.metadata,
 )
 
 
-class Category(Base):
+class BaseExtendMixin(object):
+
+    @classmethod
+    def create(cls, kwargs):
+        instance = cls(**kwargs)
+        db.session.add(instance)
+        db.session.commit()
+        return instance
+
+    def save(self):
+        db.session.add(self)
+        db.session.commit()
+
+    @classmethod
+    def filter(cls, **kwargs):
+        return db.session.query(cls).filter_by(**kwargs).all()
+
+
+class Category(BaseExtendMixin, Base):
     __tablename__ = 'categories'
     id = Column(Integer, primary_key=True)
     external_id = Column(Integer)
@@ -39,8 +59,24 @@ class Category(Base):
     def __repr__(self):
         return "<Query(name='%s',)>" % (self.name)
 
+    @classmethod
+    def get_or_create(cls, kwargs):
+        external_id = kwargs.get('external_id')
+        name = kwargs.get('name')
+        instance = db.session.query(cls).filter_by(external_id=external_id, name=name).first()
 
-class Product(Base):
+        if instance:
+            return instance
+
+        else:
+            instance = cls(**kwargs)
+            db.session.add(instance)
+            db.session.commit()
+
+            return instance
+
+
+class Product(BaseExtendMixin, Base):
     __tablename__ = 'products'
     id = Column(Integer, primary_key=True)
     name = Column(String)
@@ -65,8 +101,25 @@ class Product(Base):
     def __repr__(self):
         return "<Query(name='%s', price='%s')>" % (self.name, self.price)
 
+    @classmethod
+    def get_or_create(cls, kwargs):
+        url = kwargs.get('url')
+        name = kwargs.get('name')
+        price = kwargs.get('price')
+        special_price = kwargs.get('special_price')
+        instance = db.session.query(cls).filter_by(name=name, price=price,
+                                                   special_price=special_price,
+                                                   url=url).first()
+        if instance:
+            return instance
+        else:
+            instance = cls(**kwargs)
+            db.session.add(instance)
+            db.session.commit()
+            return instance
 
-class Query(Base):
+
+class Query(BaseExtendMixin, Base):
     __tablename__ = 'queries'
     id = Column(Integer, primary_key=True)
     text_query = Column(String)
@@ -81,8 +134,28 @@ class Query(Base):
     def __repr__(self):
         return "<Query(text_query='%s')>" % self.text_query
 
+    def save(self):
+        db.session.add(self)
+        db.session.commit()
 
-class Tip(Base):
+    @classmethod
+    def get_or_create(cls, kwargs):
+        text_query = kwargs.get('text_query')
+
+        instance = db.session.query(cls).filter_by(text_query=text_query).first()
+
+        if instance:
+            return instance
+
+        else:
+            instance = cls(**kwargs)
+            db.session.add(instance)
+            db.session.commit()
+
+            return instance
+
+
+class Tip(BaseExtendMixin, Base):
     __tablename__ = 'tips'
     id = Column(Integer, primary_key=True)
     text_query = Column(String)
@@ -100,11 +173,28 @@ class Tip(Base):
 
     def __init__(self, text_query, product=None, query=None, category=None):
         self.text_query = text_query
-        self.query = query
-        self.category = category
-        self.product = product
+        self.query = list(map(lambda x: db.session.merge(x), query))
+        self.category = list(map(lambda x: db.session.merge(x), category))
+        self.product = list(map(lambda x: db.session.merge(x), product))
 
-    def save_to_db(self):
-        db.session.add(self)
-        db.session.commit()
+    @classmethod
+    def get_or_create(cls, **kwargs):
+        text_query = kwargs.get('text_query')
+        instance = db.session.query(cls).filter_by(price=text_query).first()
 
+        if instance:
+            return instance
+
+        else:
+            instance = cls(**kwargs)
+            db.session.add(instance)
+            db.session.commit()
+
+            return instance
+
+    @classmethod
+    def get_latest(cls):
+        tips = db.session.query(cls).order_by(cls.created.desc())
+        latest = tips.first()
+
+        return latest

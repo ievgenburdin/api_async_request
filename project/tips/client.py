@@ -10,53 +10,64 @@ db_manager = AsyncDatabaseManager()
 
 class TipsClient(object):
 
-    def __init__(self, api_host, api_url, query_words):
+    def __init__(self, api_host, api_url, query_builder):
+
         self.api_host = api_host
         self.api_url = api_url
-        self.query_words = query_words
+        self.query_builer = query_builder
+
+    async def get_query_words(self):
+
+        latest = await db_manager.get_latest(Tip)
+        query_words_gen = self.query_builer.get_words_gen(latest=latest.text_query)
+
+        return query_words_gen
 
     async def get_url(self):
         return self.api_host + self.api_url
 
     async def fetch(self, session, url, query_params):
+
         async with session.get(url, params=query_params) as response:
             return await response.text()
 
     async def main(self):
         url = await self.get_url()
+        query_words = await self.get_query_words()
 
-        for query_word in self.query_words:
+        for query_word in query_words:
             query_param = {'q': query_word}
 
             async with aiohttp.ClientSession() as session:
                 response_data = await self.fetch(session, url, query_param)
+
                 try:
                     response = json.loads(response_data)
+
                     if response:
                         categories = response.get('categories', [])
                         products = response.get('products', [])
                         queries = response.get('query', [])
 
                         tip = await self.create_tip(query_word, categories, products, queries)
+                        print("Tip for query word \'%s\'successfully crated" % tip.text_query)
+
                     else:
-                        print("Empty response")
-                        continue
+                        print("Empty response for query \'%s\'" % query_word)
 
                 except json.decoder.JSONDecodeError:
                     print("Response object \'%s \'is not serializable" % response_data)
+        return
 
-                else:
-                    print("Created Tip", tip)
-        print("success")
-
-    async def create_tip(self, query_word,  categories, products, queries):
+    @staticmethod
+    async def create_tip(query_word,  categories, products, queries):
 
         category_instances = []
         for category in categories:
             category['external_id'] = category.pop('id')
-            instance = await db_manager.get_or_create(Category, **category)
-            if instance:
-                category_instances.append(instance)
+            category_instance = await db_manager.get_or_create(Category, **category)
+            if category_instance:
+                category_instances.append(category_instance)
 
         product_instances = []
         for product in products:
@@ -69,15 +80,17 @@ class TipsClient(object):
             product['special_price'] = special_price['price'] if special_price else None
             product['currency'] = price['currency'] if price else None
 
-            instance = await db_manager.get_or_create(Product, **product)
-            if instance:
-                product_instances.append(instance)
+            product_instance = await db_manager.get_or_create(Product, **product)
+
+            if product_instance:
+                product_instances.append(product_instance)
 
         query_instances = []
         for query in queries:
-            instance = await db_manager.get_or_create(Query, text_query=query)
-            if instance:
-                query_instances.append(instance)
+            query_instance = await db_manager.get_or_create(Query, text_query=query)
+
+            if query_instance:
+                query_instances.append(query_instance)
 
         tip_kwargs = {
             'category': category_instances,

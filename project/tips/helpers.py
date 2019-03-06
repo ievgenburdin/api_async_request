@@ -1,5 +1,5 @@
 from html.parser import HTMLParser
-from itertools import combinations_with_replacement
+from itertools import product
 
 
 class PriceParser(HTMLParser):
@@ -35,6 +35,7 @@ class PriceParser(HTMLParser):
         self.feed(raw)
         return self.price
 
+
 price_parser = PriceParser()
 
 
@@ -44,25 +45,16 @@ class QueryBuilder(object):
         self.max_length = max_length
 
     def get_all_words_gen(self):
-        for unique_combination in combinations_with_replacement(self.symbols_list, self.max_length):
+        for unique_combination in product(self.symbols_list, repeat=self.max_length):
             yield "".join(unique_combination)
 
     def get_words_gen(self, latest=None):
-        latest = tuple(''.split(latest))
+        combinations = product(self.symbols_list, repeat=self.max_length)
+        combinations_list = list(combinations)
+        start_index = None
         if latest:
-            try:
-                combinations_list = list(combinations_with_replacement(self.symbols_list, self.max_length))
-                index = combinations_list.index(latest)
-                for unique_combination in combinations_list[index:]:
-                    yield "".join(unique_combination)
+            latest = tuple(latest)
+            start_index = combinations_list.index(latest) + 1
 
-            except ValueError:
-                pass
-            except IndexError:
-                pass
-        else:
-            self.get_all_words_gen()
-
-
-
-
+        for unique_combination in combinations_list[start_index: ]:
+            yield "".join(unique_combination)
