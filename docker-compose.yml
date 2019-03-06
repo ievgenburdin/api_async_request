@@ -12,7 +12,6 @@ services:
     env_file: .env
     environment:
       - KEEP_ALIVE=1
-#      - RUN_PARSER=0
-#      - $IDLE = 1
+#      - RUN_PARSER=1
     volumes:
       *async-request-api-client-volumes
